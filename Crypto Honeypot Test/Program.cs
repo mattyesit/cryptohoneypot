@@ -11,6 +11,7 @@ using System.Collections.Specialized;
 using System.ServiceProcess;
 using System.Timers;
 
+
 namespace Crypto_Honeypot_Test
 {
     class Program
@@ -25,7 +26,64 @@ namespace Crypto_Honeypot_Test
         [DllImport("kernel32")]
         private static extern long WritePrivateProfileString(string section, string key, string val, string filePath);
 
+        public const string ServiceName = "Crypto HoneyPot Service";
+
         static void Main(string[] args)
+        {
+            //  main program
+            if(Environment.UserInteractive)
+                run();
+
+            // Run main checks
+            Timer RunTimer = new Timer();
+            RunTimer.Elapsed += new ElapsedEventHandler(MonitorFolders);
+            RunTimer.Interval = 500;
+            RunTimer.Enabled = true;
+
+            // Run as a service
+            if (!Environment.UserInteractive)
+            {
+                // running as service
+                using (var service = new Service())
+                    ServiceBase.Run(service);
+            }
+            else
+            {
+                Console.WriteLine("Press q then enter to quit");
+                while (Console.Read() != 'q') ;
+            }
+        }
+
+        public class Service : ServiceBase
+        {
+            public Service()
+            {
+                ServiceName = Program.ServiceName;
+            }
+
+            protected override void OnStart(string[] args)
+            {
+                Start(args);
+            }
+
+            protected override void OnStop()
+            {
+                Stop();
+            }
+        }
+
+        private static void Start(string[] args)
+        {
+            // onstart code here
+        }
+
+        private static void Stop()
+        {
+            // onstop code here
+        }
+        // End service
+
+        public static void run()
         {
             Console.WriteLine("Enter Server Name:");
             string serverName = Console.ReadLine();
@@ -60,11 +118,7 @@ namespace Crypto_Honeypot_Test
             IniWriteValue("Settings", "Server", serverName, getClientConfigFile());
 
             Console.WriteLine("Begin Monitoring");
-            // Run main checks
-            Timer RunTimer = new Timer();
-            RunTimer.Elapsed += new ElapsedEventHandler(MonitorFolders);
-            RunTimer.Interval = 500;
-            RunTimer.Enabled = true;
+            
 
             Console.ReadLine();
         }
