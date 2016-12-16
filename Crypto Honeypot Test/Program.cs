@@ -2,22 +2,29 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
-using System.Threading.Tasks;
 using System.Management;
 using System.IO;
+using System.Runtime.InteropServices;
 using System.Security.Cryptography;
-using System.Security.Principal;
 using System.Reflection;
 using System.Xml.Linq;
+using System.Collections.Specialized;
+using System.ServiceProcess;
 
 namespace Crypto_Honeypot_Test
 {
     class Program
     {
         private static string BaselineHash;
-        private static List<FileSystemWatcher> Watchers;
         private static string honeypotName = "0_HoneyPot";
-        
+
+        // Reads file and looks for contents of settings
+        [DllImport("kernel32")]
+        private static extern int GetPrivateProfileString(string section, string key, string def, StringBuilder retVal, int size, string filePath);
+
+        [DllImport("kernel32")]
+        private static extern long WritePrivateProfileString(string section, string key, string val, string filePath);
+
         static void Main(string[] args)
         {
             Console.WriteLine("Enter Server Name:");
@@ -41,11 +48,10 @@ namespace Crypto_Honeypot_Test
                             CreateHoneyPotFolder(path);
                             Console.WriteLine("Created " + honeypotName + " in " + share);
                             Console.WriteLine("-----");
-                            GenerateMonitorFiles(path);
+                            GenerateMonitorFiles(share, path);
                             Console.WriteLine("Successfully generated files to monitor in share");
                             Console.WriteLine("------------------------------------------------");
-                            GenerateMonitorFiles(path);
-                            Console.WriteLine(GenerateHashes(path + @"\test.docx"));
+                            //GenerateMonitorFiles(share, path);
                         }
                     }
 
@@ -125,7 +131,7 @@ namespace Crypto_Honeypot_Test
         /**
          *  Copy files into honeypot folder
          */
-        public static void GenerateMonitorFiles(string path)
+        public static void GenerateMonitorFiles(string share, string path)
         {
             // Get Current executable path to see if files folder exists
             string currentPath = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
@@ -137,21 +143,27 @@ namespace Crypto_Honeypot_Test
                 foreach (var file in Directory.GetFiles(filesPath))
                     if (!File.Exists(path + @"\" + Path.GetFileName(file)))
                     {
+                        // Copy files to share
                         File.Copy(file, Path.Combine(path, Path.GetFileName(file)));
-                        Console.WriteLine(GenerateHashes(Path.Combine(path, Path.GetFileName(file))));
+                        // Generate hash and add records to ini file
+                        AddHashToConfig(share, path, file, GenerateHashes(Path.Combine(path, Path.GetFileName(file))));
                     }
             }
         }
 
+        /*
         public static void GenerateHashesByPath(string path)
         {
+            
+            // Loop through path and generate hash
             foreach (var file in Directory.GetFiles(path))
-                Console.WriteLine(GenerateHashes(file));
+                // Save hashes to config file
+                AddHashToConfig(share, path, file, GenerateHashes(file));
         }
+        */
 
         public static string GenerateHashes(string file)
         {
-            Console.WriteLine(file);
             using (var md5 = MD5.Create())
             {
                 using (var stream = File.Open(file, FileMode.Open, FileAccess.Read, FileShare.ReadWrite))
@@ -159,6 +171,42 @@ namespace Crypto_Honeypot_Test
                     return BitConverter.ToString(md5.ComputeHash(stream)).Replace("-", "").ToLower();
                 }
             }
+        }
+
+
+        public static void AddHashToConfig(string share, string path, string file, string hash)
+        {
+            // Get config file
+            string strConfigFile = GetConfigFile();
+            // Add file
+            AddToConfig(strConfigFile, share, path, Path.GetFileName(file), hash);
+        }
+
+        public static string GetConfigFile(string config = null)
+        {
+            string strConfigFile = getClientConfigFile();
+
+            if(!File.Exists(strConfigFile))
+            {
+                IniWriteValue("Settings", "Client", "YesIT", getClientConfigFile());
+                IniWriteValue("Settings", "Code", "YIT", getClientConfigFile());
+            }
+
+            return strConfigFile;
+        }
+
+        public static void AddToConfig(string config, string share, string path, string file, string hash)
+        {
+            // Create Share as ini section with path as its first value even if it exists
+            IniWriteValue(share, "path", path, config);
+            // Add each file to share section with hash
+            IniWriteValue(share, file, hash, config);
+
+        }
+
+        public static string getClientConfigFile()
+        {
+            return Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location) + @"\CryptoWatcher.ini";
         }
 
         /*
@@ -210,6 +258,43 @@ namespace Crypto_Honeypot_Test
             Console.ReadKey(true);
         }
         */
+
+        /**
+         *  Start Supporting functions
+         */
+
+        // Reads settings file for value
+        public static string IniReadValue(string Section, string Key, string path)
+        {
+            StringBuilder temp = new StringBuilder(255);
+            int i = GetPrivateProfileString(Section, Key, "", temp, 255, path);
+            return temp.ToString();
+        }
+
+        // Write to settings 
+        public static void IniWriteValue(string Section, string Key, string Value, string path)
+        {
+            WritePrivateProfileString(Section, Key, Value, path);
+        }
+
+        // Check if key exists in array
+        private static bool ContainsKey(NameValueCollection collection, string key)
+        {
+            if (collection.Get(key) == null)
+                return collection.AllKeys.Contains(key);
+            return true;
+        }
+
+        private bool DoesServiceExist(string serviceName, string machineName)
+        {
+            ServiceController[] services = ServiceController.GetServices(machineName);
+            var service = services.FirstOrDefault(s => s.ServiceName == serviceName);
+            return service != null;
+        }
+
+        /**
+         *  End Supporting functions
+         */
 
     }
 }
