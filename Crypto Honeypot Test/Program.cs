@@ -39,12 +39,13 @@ namespace Crypto_Honeypot_Test
                         if (key == "Y" || key == "y")
                         {
                             CreateHoneyPotFolder(path);
-                            Console.WriteLine("Created "+ honeypotName + " in " + share);
+                            Console.WriteLine("Created " + honeypotName + " in " + share);
                             Console.WriteLine("-----");
                             GenerateMonitorFiles(path);
                             Console.WriteLine("Successfully generated files to monitor in share");
                             Console.WriteLine("------------------------------------------------");
                             GenerateMonitorFiles(path);
+                            Console.WriteLine(GenerateHashes(path + @"\test.docx"));
                         }
                     }
 
@@ -126,14 +127,19 @@ namespace Crypto_Honeypot_Test
          */
         public static void GenerateMonitorFiles(string path)
         {
+            // Get Current executable path to see if files folder exists
             string currentPath = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
             string filesPath = currentPath + @"\files";
-            Console.WriteLine(filesPath);
+            // If directory exists then attempt copy of files to honeypot
             if(Directory.Exists(filesPath))
             {
+                // Loop through files and check if they already exist in destination
                 foreach (var file in Directory.GetFiles(filesPath))
                     if (!File.Exists(path + @"\" + Path.GetFileName(file)))
+                    {
                         File.Copy(file, Path.Combine(path, Path.GetFileName(file)));
+                        Console.WriteLine(GenerateHashes(Path.Combine(path, Path.GetFileName(file))));
+                    }
             }
         }
 
@@ -145,15 +151,14 @@ namespace Crypto_Honeypot_Test
 
         public static string GenerateHashes(string file)
         {
-            MemoryStream mStrm = new MemoryStream(Encoding.UTF8.GetBytes(file));
+            Console.WriteLine(file);
             using (var md5 = MD5.Create())
             {
-                using (Stream baseline = mStrm)
+                using (var stream = File.Open(file, FileMode.Open, FileAccess.Read, FileShare.ReadWrite))
                 {
-                    BaselineHash = BitConverter.ToString(md5.ComputeHash(baseline)).Replace("-", "").ToLower();
+                    return BitConverter.ToString(md5.ComputeHash(stream)).Replace("-", "").ToLower();
                 }
             }
-            return BaselineHash;
         }
 
         /*
