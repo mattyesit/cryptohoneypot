@@ -7,16 +7,16 @@ using System.IO;
 using System.Runtime.InteropServices;
 using System.Security.Cryptography;
 using System.Reflection;
-using System.Xml.Linq;
 using System.Collections.Specialized;
 using System.ServiceProcess;
+using System.Timers;
 
 namespace Crypto_Honeypot_Test
 {
     class Program
     {
-        private static string BaselineHash;
         private static string honeypotName = "0_HoneyPot";
+        private static bool alerted = false;
 
         // Reads file and looks for contents of settings
         [DllImport("kernel32")]
@@ -39,7 +39,7 @@ namespace Crypto_Honeypot_Test
                 string path = @"\\" + serverName + "\\" + share + "\\" + honeypotName;
                 if (IsValidShare(share))
                 {
-                    if (!Directory.Exists(share))
+                    if (!Directory.Exists(path))
                     {
                         Console.Write("Create folder in share " + share + " (Y): ");
                         string key = Console.ReadLine();
@@ -51,12 +51,21 @@ namespace Crypto_Honeypot_Test
                             GenerateMonitorFiles(share, path);
                             Console.WriteLine("Successfully generated files to monitor in share");
                             Console.WriteLine("------------------------------------------------");
-                            //GenerateMonitorFiles(share, path);
                         }
                     }
 
                 }
             }
+
+            IniWriteValue("Settings", "Server", serverName, getClientConfigFile());
+
+            Console.WriteLine("Begin Monitoring");
+            // Run main checks
+            Timer RunTimer = new Timer();
+            RunTimer.Elapsed += new ElapsedEventHandler(MonitorFolders);
+            RunTimer.Interval = 500;
+            RunTimer.Enabled = true;
+
             Console.ReadLine();
         }
 
@@ -209,55 +218,73 @@ namespace Crypto_Honeypot_Test
             return Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location) + @"\CryptoWatcher.ini";
         }
 
-        /*
-        public static void MonitorFolders(string path)
+        
+        public static void MonitorFolders(object source, ElapsedEventArgs e)
         {
-            Watchers = new List<FileSystemWatcher>();
+            string serverName = IniReadValue("Settings", "Server", getClientConfigFile());
+            List<string> shares = GetNetworkShareFoldersList(serverName);
 
-            //Store hash of baseline
-            using (var md5 = MD5.Create())
+            foreach (string share in shares)
             {
-                using (Stream baseline = Assembly.GetExecutingAssembly().GetManifestResourceStream("CryptoWatcher.Resources.Baseline.doc"))
+                string path = @"\\" + serverName + "\\" + share + "\\" + honeypotName;
+                if (IsValidShare(share))
                 {
-                    BaselineHash = BitConverter.ToString(md5.ComputeHash(baseline)).Replace("-", "").ToLower();
+                    if (Directory.Exists(path))
+                    {
+                        foreach (var file in Directory.GetFiles(path))
+                        {
+                            // Get filename
+                            string fileName = Path.GetFileName(file);
+                            // Get has of current file
+                            string hash = GenerateHashes(file);
+                            // Get previous hash
+                            string hashed = IniReadValue(share, fileName, getClientConfigFile());
+                            // Compare hashes
+                            if (hash != hashed)
+                            {
+                                if (alerted == false)
+                                {
+                                    // check if have alerted
+                                    Console.WriteLine("Changed");
+                                    StopService("Server", 1000);
+                                }
+                                // change alert to true to not piss people off
+                                alerted = true;
+                            }
+                            
+                        }
+                    }
+
                 }
             }
 
-            foreach (var folder in Config.Element("root").Descendants("folder"))
-            {
-                string strPath = folder.Element("path").Value;
-                string strTestPath = strPath + "\\DO NOT EDIT THIS DOCUMENT.doc";
-                Console.WriteLine("Setting up path: " + strPath);
+            /**
+                Get share
+                    Loop through files
+                        Get hash of file
+                        Compare hash of file to ini file
 
-                //Check if the resource file is there
-                if (!File.Exists(strTestPath))
-                {
-                    File.WriteAllBytes(strTestPath, CryptoWatcher.Properties.Resources.Baseline);
-                    Console.WriteLine("Baseline copied to {0}", strTestPath);
-                }
+                        If changed stop server service
+                     
 
-                //Now compare the existing with our stored to make sure baseline is a match
-                if (BaselineHash != GetHash(strTestPath))
-                {
-                    //Files already don't match, quit out and suggest deleting
-                    Console.WriteLine("Test file {0} doesn't match baseline, delete and allow to be replaced", strTestPath);
-                    Environment.Exit(1);
-                }
-
-                //Now set up watcher on this file
-                FileSystemWatcher watcher = new FileSystemWatcher();
-                watcher.Path = Path.GetDirectoryName(strTestPath);
-                watcher.IncludeSubdirectories = false;
-                watcher.Filter = Path.GetFileName(strTestPath);
-                watcher.NotifyFilter = NotifyFilters.LastWrite | NotifyFilters.LastAccess | NotifyFilters.Size | NotifyFilters.Security;
-                watcher.Changed += watcher_Changed;
-                watcher.EnableRaisingEvents = true;
-                Watchers.Add(watcher);
-            }
-
-            Console.ReadKey(true);
+             */
         }
-        */
+
+        public static void StopService(string serviceName, int timeoutMilliseconds)
+        {
+            ServiceController service = new ServiceController(serviceName);
+            try
+            {
+                TimeSpan timeout = TimeSpan.FromMilliseconds(timeoutMilliseconds);
+
+                service.Stop();
+                service.WaitForStatus(ServiceControllerStatus.Stopped, timeout);
+            }
+            catch
+            {
+                // ...
+            }
+        }
 
         /**
          *  Start Supporting functions
