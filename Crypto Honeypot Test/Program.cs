@@ -12,12 +12,14 @@ using System.ServiceProcess;
 using System.Timers;
 
 
-namespace Crypto_Honeypot_Test
+namespace Crypto_Honeypot
 {
     class Program
     {
         private static string honeypotName = "0_HoneyPot";
         private static bool alerted = false;
+        
+
 
         // Reads file and looks for contents of settings
         [DllImport("kernel32")]
@@ -27,11 +29,15 @@ namespace Crypto_Honeypot_Test
         private static extern long WritePrivateProfileString(string section, string key, string val, string filePath);
 
         public const string ServiceName = "Crypto HoneyPot Service";
+        public const string ServiceTitle = "cryptohoneypot";
+        private static string install;
 
         static void Main(string[] args)
         {
+            Console.Title = "Crypto Honeypot";
+
             //  main program
-            if(Environment.UserInteractive)
+            if (Environment.UserInteractive)
                 run();
 
             // Run main checks
@@ -85,13 +91,138 @@ namespace Crypto_Honeypot_Test
 
         public static void run()
         {
-            Console.WriteLine("Enter Server Name:");
-            string serverName = Console.ReadLine();
-            Console.WriteLine("-------------");
+            Console.WriteLine("===========================================================");
+            Console.WriteLine("####                                                   ####");
+            Console.WriteLine("####        Cryptolocker Honeypot Configuration        ####");
+            Console.WriteLine("####                                                   ####");
+            Console.WriteLine("===========================================================\n");
+
+            // Show menu options
+            menuOptions();
+
+            bool done = false;
+            do
+            {
+                string selection = Console.ReadLine();
+                int select;
+
+                try
+                {
+                    select = int.Parse(selection);
+                }
+                catch
+                {
+                    Console.WriteLine("Incorrect");
+                    select = 0;
+                }
+                Console.WriteLine("\n");
+                switch (select)
+                {
+                    case 0:
+                        Console.WriteLine("You selected an invalid number: {0}\r\n", select); 
+                        break;
+                    case 1:
+                        // Install Service
+                        installService();
+                        // Show menu options again
+                        menuOptions();
+                        break;
+                    case 2:
+                        // Configure Honepots
+                        configureHoneypot();
+                        // Show menu options again
+                        menuOptions();
+                        break;
+                    case 3:
+                        done = true;
+                        continue;
+                    default:
+                        break;
+
+                }
+            } while (!done);
+        }
+
+        public static void menuOptions()
+        {
+            Console.WriteLine("Please select an option from the menu:");
+            Console.WriteLine("--------------------------\n");
+
+            if (isServiceInstalled())
+                install = "Uninstall";
+            else
+                install = "Install";
+
+
+            Console.WriteLine("1 -- {0} Service", install);
+            Console.WriteLine("2 -- Setup Honeypots");
+            Console.WriteLine("3 -- Configure email notification");
+            Console.WriteLine("4 -- Quit");
+
+            Console.WriteLine("\nChoose and press enter: ");
+        }
+
+        public static void installService()
+        {
+            // Prepare CMD execution of SC to install/uninstall service
+            System.Diagnostics.Process process = new System.Diagnostics.Process();
+            System.Diagnostics.ProcessStartInfo startInfo = new System.Diagnostics.ProcessStartInfo();
+            startInfo.WindowStyle = System.Diagnostics.ProcessWindowStyle.Hidden;
+            startInfo.FileName = "cmd.exe";
+
+            // Get path of current executable to install as service
+            string path = Assembly.GetExecutingAssembly().Location;
+            
+
+            if (!DoesServiceExist(ServiceTitle, Environment.MachineName))
+            {
+                // Install service
+                startInfo.Arguments = String.Format("/C sc create cryptohoneypot binPath= \"{0}\" displayName= \"{1}\" start= auto", path, ServiceName);
+                process.StartInfo = startInfo;
+                process.Start();
+
+                // Give a second delay to install service else install/uninstall text will be incorrect
+                Console.WriteLine("Installing...");
+                System.Threading.Thread.Sleep(1000);
+                Console.WriteLine("Service has been installed as: {0}\n", ServiceName);
+            }
+            else
+            {
+                // Stop service before removing
+                startInfo.Arguments = @"/C sc stop cryptohoneypot";
+                process.StartInfo = startInfo;
+                process.Start();
+
+                // Delete service
+                startInfo.Arguments = @"/C sc delete cryptohoneypot";
+                process.StartInfo = startInfo;
+                process.Start();
+
+                // Give a second delay to remove service else install/uninstall text will be incorrect
+                Console.WriteLine("Uninstalling...");
+                System.Threading.Thread.Sleep(1000);
+                Console.WriteLine("Service {0} has been uninstalled!\n", ServiceName);
+            }
+        }
+
+        public static bool isServiceInstalled()
+        {
+            string machineName = Environment.MachineName;
+            if (DoesServiceExist(ServiceTitle, machineName))
+                return true;
+            return false;
+        }
+
+        public static void configureHoneypot()
+        {
+            //Console.WriteLine("Enter Server Name:");
+            string serverName = Environment.MachineName;
+            Console.WriteLine("Setting up honeypot on {0}", serverName);
+            Console.WriteLine("Choose shares to setup honeypot in. Type 'Y' & press enter to setup.");
+            Console.WriteLine("--------------------------");
+            // Get list of network shares on current PC
             List<string> shares = GetNetworkShareFoldersList(serverName);
-
-            //Dictionary<string, string> watchFiles = new Dictionary<string, string>;
-
+            
             foreach (string share in shares)
             {
                 string path = @"\\" + serverName + "\\" + share + "\\" + honeypotName;
@@ -99,7 +230,7 @@ namespace Crypto_Honeypot_Test
                 {
                     if (!Directory.Exists(path))
                     {
-                        Console.Write("Create folder in share " + share + " (Y): ");
+                        Console.Write("Create honeypot in the share \"" + share + "\"? (Y): ");
                         string key = Console.ReadLine();
                         if (key == "Y" || key == "y")
                         {
@@ -117,10 +248,8 @@ namespace Crypto_Honeypot_Test
 
             IniWriteValue("Settings", "Server", serverName, getClientConfigFile());
 
-            Console.WriteLine("Begin Monitoring");
+            Console.WriteLine("\nRun as a service to begin monitoring\n");
             
-
-            Console.ReadLine();
         }
 
         public static List<string> GetNetworkShareFoldersList(string serverName)
@@ -214,17 +343,6 @@ namespace Crypto_Honeypot_Test
             }
         }
 
-        /*
-        public static void GenerateHashesByPath(string path)
-        {
-            
-            // Loop through path and generate hash
-            foreach (var file in Directory.GetFiles(path))
-                // Save hashes to config file
-                AddHashToConfig(share, path, file, GenerateHashes(file));
-        }
-        */
-
         public static string GenerateHashes(string file)
         {
             using (var md5 = MD5.Create())
@@ -234,7 +352,7 @@ namespace Crypto_Honeypot_Test
                     return BitConverter.ToString(md5.ComputeHash(stream)).Replace("-", "").ToLower();
                 }
             }
-        }
+        } 
 
 
         public static void AddHashToConfig(string share, string path, string file, string hash)
@@ -305,24 +423,16 @@ namespace Crypto_Honeypot_Test
                                 // change alert to true to not piss people off
                                 alerted = true;
                             }
-                            
                         }
                     }
-
                 }
             }
-
-            /**
-                Get share
-                    Loop through files
-                        Get hash of file
-                        Compare hash of file to ini file
-
-                        If changed stop server service
-                     
-
-             */
         }
+
+
+        /**
+         *  Start services suppot
+         */
 
         public static void StopService(string serviceName, int timeoutMilliseconds)
         {
@@ -366,7 +476,7 @@ namespace Crypto_Honeypot_Test
             return true;
         }
 
-        private bool DoesServiceExist(string serviceName, string machineName)
+        private static bool DoesServiceExist(string serviceName, string machineName)
         {
             ServiceController[] services = ServiceController.GetServices(machineName);
             var service = services.FirstOrDefault(s => s.ServiceName == serviceName);

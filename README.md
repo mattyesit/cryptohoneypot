@@ -8,14 +8,12 @@ This README would normally document whatever steps are necessary to get your app
 
 The aim behind the Cryptolocker Honeypot toolkit is to have a folder on each network share that acts as a honeypot for unauthorised file changes from network users.
 
-The honeypot folder will contain non-business documents that can be encrypted without harm. This folder has a checksum run across the files as well as timestamps for further accuracy.
+The honeypot folder will contain non-business documents that can be encrypted without harm. This folder has a checksum run across the files every 500 milliseconds waiting for a checksum change.
 
-Based on defined configuration rules, if the rules are triggered on that folder then the server service will be stopped to prevent users accessing the network shares.
+As the honeypot folder is created the files get hashed which get stored in a config file to compare against.
 
-The service will also report a 'Disconnect' alert that computers in the network wait for in order to disconnect any network share attached to that PC as a second level of prevention. This will be a separate project.
+Once a change has been detected the server service will be forced to stop running preventing any further spread across the files server.
 
-* Version
-* [Learn Markdown](https://bitbucket.org/tutorials/markdowndemo)
 
 ### How do I get set up? ###
 
@@ -36,3 +34,7 @@ The service will also report a 'Disconnect' alert that computers in the network 
 
 * Repo owner or admin
 * Other community or team contact
+
+### Future Plans ###
+
+The honeypot will aim to have a client system installed on network PC's that monitors for a detection alert from a server with a possible User/PC causing the issue. If the User/PC matches the clients then an alert will be displayed to notify that user. That PC will also have its network shares disconnected further reducing threats.
