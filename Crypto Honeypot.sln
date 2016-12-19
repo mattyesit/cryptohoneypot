@@ -1,9 +1,9 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 14
-VisualStudioVersion = 14.0.25123.0
+VisualStudioVersion = 14.0.23107.0
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Crypto Honeypot Test", "Crypto Honeypot Test\Crypto Honeypot Test.csproj", "{5EEDC792-CF11-49CA-B341-F9B9AC84E62B}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Crypto Honeypot", "Crypto Honeypot Test\Crypto Honeypot.csproj", "{5EEDC792-CF11-49CA-B341-F9B9AC84E62B}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

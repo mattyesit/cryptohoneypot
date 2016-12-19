@@ -16,11 +16,7 @@ namespace Crypto_Honeypot
 {
     class Program
     {
-        private static string honeypotName = "0_HoneyPot";
-        private static bool alerted = false;
-        
-
-
+     
         // Reads file and looks for contents of settings
         [DllImport("kernel32")]
         private static extern int GetPrivateProfileString(string section, string key, string def, StringBuilder retVal, int size, string filePath);
@@ -30,6 +26,8 @@ namespace Crypto_Honeypot
 
         public const string ServiceName = "Crypto HoneyPot Service";
         public const string ServiceTitle = "cryptohoneypot";
+        private static string honeypotName = "0_HoneyPot";
+        private static bool alerted = false;
         private static string install;
 
         static void Main(string[] args)
@@ -207,15 +205,15 @@ namespace Crypto_Honeypot
 
         public static bool isServiceInstalled()
         {
-            string machineName = Environment.MachineName;
-            if (DoesServiceExist(ServiceTitle, machineName))
+            // Check if service installed
+            if (DoesServiceExist(ServiceTitle, Environment.MachineName))
                 return true;
             return false;
         }
 
         public static void configureHoneypot()
         {
-            //Console.WriteLine("Enter Server Name:");
+            // Get local PC's name and begin setup of honeypots
             string serverName = Environment.MachineName;
             Console.WriteLine("Setting up honeypot on {0}", serverName);
             Console.WriteLine("Choose shares to setup honeypot in. Type 'Y' & press enter to setup.");

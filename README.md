@@ -1,8 +1,6 @@
 # README #
 
-This README would normally document whatever steps are necessary to get your application up and running.
-
-### What is this repository for? ###
+### Crypto Honeypot ###
 
 * Quick summary
 
@@ -14,26 +12,20 @@ As the honeypot folder is created the files get hashed which get stored in a con
 
 Once a change has been detected the server service will be forced to stop running preventing any further spread across the files server.
 
-
 ### How do I get set up? ###
 
-* Summary of set up
-* Configuration
-* Dependencies
-* Database configuration
-* How to run tests
-* Deployment instructions
-
-### Contribution guidelines ###
-
-* Writing tests
-* Code review
-* Other guidelines
+* Verify you have a folder called 'files' in the same location as the .exe with generic documents.
+* Run the Crypto Honeypot to open the console configuration utility. You can configure the honeypots & install the service to run in the background.
+* Start the service under services.msc. Note email alert still to be setup. Keep an eye on the 'Server' service
 
 ### Who do I talk to? ###
 
-* Repo owner or admin
-* Other community or team contact
+* Email: matt@yesit.com.au
+
+### To Do ###
+
+* Email notifications
+* Fix error when stopping service
 
 ### Future Plans ###
 
