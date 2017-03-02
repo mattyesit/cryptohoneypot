@@ -21,6 +21,7 @@ namespace Crypto_Honeypot
         [DllImport("kernel32")]
         private static extern int GetPrivateProfileString(string section, string key, string def, StringBuilder retVal, int size, string filePath);
 
+        // Write settings to file
         [DllImport("kernel32")]
         private static extern long WritePrivateProfileString(string section, string key, string val, string filePath);
 
@@ -34,7 +35,7 @@ namespace Crypto_Honeypot
         {
             Console.Title = "Crypto Honeypot";
 
-            //  main program
+            //  Show menu and configuration options in CMD window
             if (Environment.UserInteractive)
                 run();
 
@@ -89,6 +90,7 @@ namespace Crypto_Honeypot
 
         public static void run()
         {
+            // Nice and fancy title
             Console.WriteLine("===========================================================");
             Console.WriteLine("####                                                   ####");
             Console.WriteLine("####        Cryptolocker Honeypot Configuration        ####");
@@ -98,7 +100,9 @@ namespace Crypto_Honeypot
             // Show menu options
             menuOptions();
 
+            // Sets to true once configuration has completed
             bool done = false;
+
             do
             {
                 string selection = Console.ReadLine();
@@ -132,6 +136,12 @@ namespace Crypto_Honeypot
                         menuOptions();
                         break;
                     case 3:
+                        // Configure emails
+                        configureEmail();
+                        // Show menu options again
+                        menuOptions();
+                        break;
+                    case 4:
                         done = true;
                         continue;
                     default:
@@ -151,10 +161,9 @@ namespace Crypto_Honeypot
             else
                 install = "Install";
 
-
             Console.WriteLine("1 -- {0} Service", install);
             Console.WriteLine("2 -- Setup Honeypots");
-            Console.WriteLine("3 -- Configure email notification");
+            Console.WriteLine("3 -- Configure email notification (Still to come)");
             Console.WriteLine("4 -- Quit");
 
             Console.WriteLine("\nChoose and press enter: ");
@@ -250,16 +259,17 @@ namespace Crypto_Honeypot
             
         }
 
+        public static void configureEmail()
+        {
+            Console.WriteLine("Still to come\n");
+        }
+
         public static List<string> GetNetworkShareFoldersList(string serverName)
         {
             List<string> shares = new List<string>();
 
             // do not use ConnectionOptions to get shares from local machine
             ConnectionOptions connectionOptions = new ConnectionOptions();
-            //connectionOptions.Username = @"Domain\Administrator";
-            //connectionOptions.Password = "password";
-            //connectionOptions.Impersonation = ImpersonationLevel.Impersonate;
-
             ManagementScope scope = new ManagementScope("\\\\" + serverName + "\\root\\CIMV2",
                                                         connectionOptions);
             scope.Connect();
